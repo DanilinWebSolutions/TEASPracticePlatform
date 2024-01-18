@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #start-button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #start-test-btn {
+            font-size: 2em;
+            margin-bottom: 700px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #test-container {
+            display: none;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            margin-top: 20px;
+        }
+
+        #timer-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #timer {
+            font-size: 1.5em;
+        }
+
+        #pause-btn {
+            font-size: 1em;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        #test-content {
+            margin-bottom: 20px;
+        }
+
+        #test-results-container {
+            display: none;
+            text-align: center;
+        }
+
+        #email-container {
+            display: none;
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px); /* Adjust the blur value as needed */
+        }
+
+        #resume-btn {
+            font-size: 1.5em;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background-color: white;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            z-index: 1001;
+        }
+
+        #close-modal-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+    </style>
+    <title>Practice Test</title>
+</head>
+<body>
+
+<div id="start-button-container">
+    <button id="start-test-btn" onclick="startPracticeTest()">Start Practice Test</button>
+</div>
+
+<div id="test-container">
+    <div id="timer-container">
+        <div id="timer">00:00</div>
+        <button id="pause-btn" onclick="pauseTest()">Pause</button>
+    </div>
+    <div id="test-content"></div>
+    <button onclick="submitAnswer()">Submit Answer</button>
+</div>
+
+<div id="test-results-container">
+    <div id="test-content-results"></div>
+    <div id="email-container">
+        <label for="email">Enter your email:</label>
+        <input type="email" id="email" required>
+        <button onclick="submitTestResults()">Submit Test Results</button>
+    </div>
+</div>
+
+<div id="overlay">
+    <button id="resume-btn" onclick="resumeTest()">Resume</button>
+</div>
+
+<div id="modal">
+    <div id="close-modal-btn" onclick="closeModal()">X</div>
+    <p>Test Completed</p>
+    <p>Time taken: <span id="modal-time"></span></p>
+    <p>Correct Answers: <span id="modal-correct"></span></p>
+    <p>Incorrect Answers: <span id="modal-incorrect"></span></p>
+    <p>Percentage: <span id="modal-percentage"></span>%</p>
+    <p>Enter your email to get the rest of the practice questions</p>
+    <input type="email" id="modal-email" required>
+    <button onclick="submitTestResults()">Submit Test Results</button>
+</div>
+
+<script>
+    let questions = [
+        {
+            question: "Loss of barrier islands due to erosion?",
+            answers: ["Hurricane Katrina", "Rising sea levels", "Earthquake", "Tsunami"],
+            correctAnswer: "Rising sea levels"
+        },
+        {
+            question: "Question 2?",
+            answers: ["Option 1", "Option 2", "Option 3", "Option 4"],
+            correctAnswer: "Option 2"
+        },
+        {
+            question: "Question 3?",
+            answers: ["Option 1", "Option 2", "Option 3", "Option 4"],
+            correctAnswer: "Option 2"
+        },
+        {
+            question: "Question 4?",
+            answers: ["Option 1", "Option 2", "Option 3", "Option 4"],
+            correctAnswer: "Option 2"
+        },
+        {
+            question: "Question 5?",
+            answers: ["Option 1", "Option 2", "Option 3", "Option 4"],
+            correctAnswer: "Option 2"
+        },
+        // ... (Add more questions as needed)
+    ];
+
+    let currentQuestionIndex = 0;
+    let correctAnswers = 0;
+    let timerInterval;
+    let timerSeconds = 0;
+    let testCompletionTime;
+    let isTestPaused = false;
+
+    function startPracticeTest() {
+        document.getElementById('start-button-container').style.display = 'none';
+        document.getElementById('test-container').style.display = 'block';
+        document.getElementById('timer-container').style.display = 'flex'; // Show the timer container
+        startTimer();
+        showQuestion();
+    }
+
+    function startTimer() {
+        timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function updateTimer() {
+        if (!isTestPaused) {
+            timerSeconds++;
+            document.getElementById('timer').innerText = formatTime(timerSeconds);
+        }
+    }
+
+    function showQuestion() {
+        if (currentQuestionIndex < questions.length) {
+            let questionData = questions[currentQuestionIndex];
+            let answersBody = "";
+
+            questionData.answers.forEach(answer => {
+                answersBody += `
+                    <div>
+                        <input type="radio" name="answers" value="${answer}" onclick="selectAnswer(this)">
+                        <label>${answer}</label>
+                    </div>
+                `;
+            });
+
+            document.getElementById('test-content').innerHTML = `
+                <h3>${questionData.question}</h3>
+                ${answersBody}
+            `;
+        } else {
+            clearInterval(timerInterval);
+            testCompletionTime = new Date().toLocaleTimeString();
+            document.getElementById('timer-container').style.display = 'none';
+            document.getElementById('test-container').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none'; // Hide the overlay
+            document.getElementById('test-results-container').style.display = 'block';
+
+            // Display results in the modal
+            document.getElementById('modal-time').innerText = formatTime(timerSeconds);
+            document.getElementById('modal-correct').innerText = correctAnswers;
+            document.getElementById('modal-incorrect').innerText = questions.length - correctAnswers;
+            document.getElementById('modal-percentage').innerText = ((correctAnswers / questions.length) * 100).toFixed(2);
+
+            // Show the modal
+            document.getElementById('modal').style.display = 'block';
+        }
+    }
+
+    function selectAnswer(selectedAnswer) {
+        // Handle answer selection if needed
+    }
+
+    function submitAnswer() {
+        let selectedAnswer = document.querySelector('input[name="answers"]:checked');
+
+        if (selectedAnswer) {
+            let correctAnswer = questions[currentQuestionIndex].correctAnswer;
+
+            if (selectedAnswer.value === correctAnswer) {
+                correctAnswers++;
+            }
+
+            currentQuestionIndex++;
+            showQuestion();
+        } else {
+            alert("Please select an answer before submitting.");
+        }
+    }
+
+    function formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+    }
+
+    function pauseTest() {
+        isTestPaused = true;
+        document.getElementById('overlay').style.display = 'flex';
+    }
+
+    function resumeTest() {
+        isTestPaused = false;
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function closeModal() {
+        // Redirect to the specified URL
+        window.location.href = 'https://faststartcareerprep.com/?page_id=1386';
+    }
+
+function submitTestResults() {
+        let userEmail = document.getElementById('modal-email').value;
+
+        // Validate email address
+        if (!userEmail.includes('@')) {
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        // Calculate test results
+        let totalQuestions = questions.length;
+        let percentCorrect = ((correctAnswers / totalQuestions) * 100).toFixed(2);
+        let results = {
+            completionTime: testCompletionTime,
+            correct: correctAnswers,
+            incorrect: totalQuestions - correctAnswers,
+            total: totalQuestions,
+            percent: percentCorrect
+        };
+
+        // Prepare data to be sent
+        let dataToSend = {
+            email: userEmail,
+            results: results
+        };
+
+        // Send data to sendemail.php via AJAX
+        fetch('sendemail.php', { // Change 'sendemail.php' to your actual filename
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSend)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Results submitted successfully. Check your email for more information.');
+            // Redirect to index.html after successful submission
+            window.location.href = 'index.html';
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('There was an error submitting your results.');
+        });
+    }
+</script>
+
+</body>
+</html>
